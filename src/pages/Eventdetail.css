@@ -1,0 +1,273 @@
+/* ─── EVENT DETAIL PAGE ─────────────────────────────────────── */
+
+.event-detail-page {
+  max-width: 1100px;
+}
+
+/* ─── Back link ─────────────────────────────────────────────── */
+.back-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: var(--text-secondary);
+  margin-bottom: 28px;
+  transition: color 0.15s;
+  text-decoration: none;
+  letter-spacing: 0.04em;
+}
+.back-link:hover {
+  color: var(--accent);
+  text-decoration: none;
+}
+
+/* ─── Two-column grid ───────────────────────────────────────── */
+.event-detail-grid {
+  display: grid;
+  grid-template-columns: 1fr 360px;
+  gap: 36px;
+  align-items: start;
+}
+
+/* ─── Hero image ────────────────────────────────────────────── */
+.event-detail-img {
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  height: 320px;
+  background: var(--bg-elevated);
+  margin-bottom: 28px;
+}
+.event-detail-img img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.event-detail-placeholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 5rem;
+  background: linear-gradient(135deg, var(--purple-dim), var(--accent-dim));
+}
+
+/* ─── Status + ID row ───────────────────────────────────────── */
+.event-detail-status-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+/* ─── Title ─────────────────────────────────────────────────── */
+.event-detail-title {
+  font-family: var(--font-display);
+  font-size: clamp(1.8rem, 4vw, 3rem);
+  letter-spacing: 0.04em;
+  line-height: 1.1;
+  margin-bottom: 14px;
+}
+
+/* ─── Meta ──────────────────────────────────────────────────── */
+.event-detail-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 24px;
+}
+
+.event-detail-meta-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+}
+
+.event-detail-meta-icon {
+  width: 1.25rem;
+  flex-shrink: 0;
+  font-style: normal;
+}
+
+/* ─── Description ───────────────────────────────────────────── */
+.event-detail-desc {
+  margin-top: 8px;
+}
+.event-detail-desc h3 {
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: 10px;
+}
+.event-detail-desc p {
+  color: var(--text-secondary);
+  line-height: 1.7;
+  font-size: 0.95rem;
+}
+
+/* ─── Right: purchase panel ─────────────────────────────────── */
+.event-ticket-panel {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  padding: 28px;
+  position: sticky;
+  top: calc(var(--nav-height) + 24px);
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.ticket-panel-title {
+  font-family: var(--font-display);
+  font-size: 1.5rem;
+  letter-spacing: 0.06em;
+  color: var(--text-primary);
+}
+
+/* ─── Ticket type options ───────────────────────────────────── */
+.ticket-types-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.ticket-type-option {
+  background: var(--bg-elevated);
+  border: 2px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 14px 16px;
+  cursor: pointer;
+  transition: border-color 0.18s, background 0.18s;
+  text-align: left;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  grid-template-rows: auto auto;
+  gap: 4px;
+  width: 100%;
+}
+.ticket-type-option:hover:not(:disabled) {
+  border-color: var(--accent);
+  background: var(--accent-dim);
+}
+.ticket-type-option.selected {
+  border-color: var(--accent);
+  background: var(--accent-dim);
+  box-shadow: 0 0 0 1px var(--accent);
+}
+.ticket-type-option:disabled,
+.ticket-type-option.sold {
+  opacity: 0.4;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.ticket-type-name {
+  font-weight: 700;
+  font-size: 0.95rem;
+  color: var(--text-primary);
+  grid-column: 1;
+  grid-row: 1;
+}
+.ticket-type-price {
+  font-weight: 800;
+  font-size: 1.05rem;
+  color: var(--accent);
+  grid-column: 2;
+  grid-row: 1;
+  text-align: right;
+  font-family: var(--font-display);
+  letter-spacing: 0.04em;
+}
+.ticket-type-avail {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  grid-column: 1 / -1;
+  grid-row: 2;
+}
+
+/* ─── Quantity selector ─────────────────────────────────────── */
+.quantity-selector {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.qty-controls {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.qty-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-sm);
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-light);
+  color: var(--text-primary);
+  font-size: 1.1rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.qty-btn:hover:not(:disabled) {
+  background: var(--accent-dim);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.qty-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.qty-value {
+  font-size: 1.2rem;
+  font-weight: 800;
+  min-width: 28px;
+  text-align: center;
+  color: var(--text-primary);
+}
+
+/* ─── Total row ─────────────────────────────────────────────── */
+.ticket-total {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 14px 0;
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+}
+.ticket-total-label {
+  font-size: 0.82rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-secondary);
+}
+.ticket-total-price {
+  font-family: var(--font-display);
+  font-size: 1.4rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  color: var(--accent);
+}
+
+/* ─── Responsive ────────────────────────────────────────────── */
+@media (max-width: 900px) {
+  .event-detail-grid {
+    grid-template-columns: 1fr;
+  }
+  .event-ticket-panel {
+    position: static;
+  }
+}
