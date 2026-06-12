@@ -18,7 +18,7 @@ const ticketService = {
    */
   generate: (data) => api.post("/api/tickets/generate", data),
 
-  getMyTickets: () => api.get("/tickets/my"),
+  getMyTickets: () => api.get("/api/tickets/buyer/me"),
 };
 
 export default ticketService;
