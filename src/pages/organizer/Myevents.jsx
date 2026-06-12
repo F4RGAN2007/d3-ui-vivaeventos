@@ -18,14 +18,15 @@ function formatPrice(p) {
 }
 
 function resolveTotal(tt) {
-  return tt.quantity ?? tt.totalQuantity ?? tt.total ?? tt.totalCapacity ?? "—";
+  return tt.quantity ?? tt.totalQuantity ?? tt.total ?? tt.totalCapacity ?? tt.availableQuantity ?? "—";
 }
 
 function resolveAvailable(tt) {
+  // Prefer remainingStock (live count after sales), then other fallbacks
   return (
+    tt.remainingStock ??
     tt.remainingCapacity ??
     tt.available ??
-    tt.availableQuantity ??
     tt.remaining ??
     tt.stock ??
     resolveTotal(tt)
@@ -132,9 +133,11 @@ export default function MyEvents() {
 }
 
 function EventRow({ event, busy, msg, onPublish, onCancel }) {
-  const [expanded, setExpanded] = useState(false);
-  const navigate    = useNavigate();
-  const ticketTypes = event.ticketTypes ?? [];
+  const [expanded,      setExpanded]      = useState(false);
+  const [ticketTypes,   setTicketTypes]   = useState(event.ticketTypes ?? []);
+  const [loadingTix,    setLoadingTix]    = useState(false);
+  const [ticketError,   setTicketError]   = useState("");
+  const navigate = useNavigate();
 
   const canEdit = event.status === "DRAFT" || event.status === "PUBLISHED";
 
@@ -143,6 +146,27 @@ function EventRow({ event, busy, msg, onPublish, onCancel }) {
     DRAFT:     "badge-draft",
     CANCELLED: "badge-cancelled",
   }[event.status] ?? "badge-inactive";
+
+  // Fetch fresh ticket availability every time the panel is opened
+  const handleToggle = async () => {
+    const opening = !expanded;
+    setExpanded(opening);
+
+    if (!opening) return; // closing — nothing to fetch
+
+    setLoadingTix(true);
+    setTicketError("");
+    try {
+      const res = await eventService.getById(event.id);
+      const fresh = res.data?.ticketTypes ?? [];
+      setTicketTypes(fresh);
+    } catch (err) {
+      setTicketError(err.userMessage ?? "No se pudo actualizar la disponibilidad.");
+      // Keep showing the stale data rather than blanking the panel
+    } finally {
+      setLoadingTix(false);
+    }
+  };
 
   return (
     <div className={`card my-event-row-card${busy ? " is-busy" : ""}`}>
@@ -183,9 +207,10 @@ function EventRow({ event, busy, msg, onPublish, onCancel }) {
           )}
           <button
             className="btn btn-ghost btn-sm"
-            onClick={() => setExpanded((x) => !x)}
+            onClick={handleToggle}
+            disabled={loadingTix}
           >
-            {expanded ? "▲" : "▼"} Boletas
+            {loadingTix ? "⏳" : expanded ? "▲" : "▼"} Boletas
           </button>
         </div>
       </div>
@@ -198,6 +223,12 @@ function EventRow({ event, busy, msg, onPublish, onCancel }) {
 
       {expanded && (
         <div className="my-event-tickets">
+          {ticketError && (
+            <div className="alert alert-error mb-2" style={{ fontSize: "0.85rem" }}>
+              {ticketError}
+            </div>
+          )}
+
           {ticketTypes.length === 0 ? (
             <p className="text-muted text-sm">Sin tipos de boleta registrados.</p>
           ) : (
@@ -207,17 +238,25 @@ function EventRow({ event, busy, msg, onPublish, onCancel }) {
                   <tr>
                     <th>Tipo</th>
                     <th>Precio</th>
-                    <th>Disp.</th>
+                    <th>Disponibles</th>
+                    <th>Total</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {ticketTypes.map((tt) => (
-                    <tr key={tt.id}>
-                      <td style={{ fontWeight: 600 }}>{tt.name}</td>
-                      <td><span className="price">{formatPrice(tt.price)}</span></td>
-                      <td>{resolveAvailable(tt)}</td>
-                    </tr>
-                  ))}
+                  {ticketTypes.map((tt) => {
+                    const available = resolveAvailable(tt);
+                    const total     = resolveTotal(tt);
+                    return (
+                      <tr key={tt.id}>
+                        <td style={{ fontWeight: 600 }}>{tt.name}</td>
+                        <td><span className="price">{formatPrice(tt.price)}</span></td>
+                        <td>{available}</td>
+                        <td style={{ color: "var(--color-text-muted, #888)", fontSize: "0.85em" }}>
+                          {total}
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
