@@ -2,29 +2,6 @@ import { useEffect, useState, useRef } from "react";
 import { useSearchParams, useNavigate, Link } from "react-router-dom";
 import paymentService from "../services/paymentService.js";
 
-/**
- * Página de retorno de Stripe.
- *
- * Stripe redirige aquí después del pago. Para que funcione, la success_url
- * del backend debe incluir cart_id como parámetro de query.
- *
- * ── Cambio requerido en payment-service ──────────────────────────────────
- *
- * 1. application.yml:
- *      stripe:
- *        success-url: ${FRONTEND_URL:http://localhost:5173}/payment-success?cart_id=CART_ID_PLACEHOLDER&session_id={CHECKOUT_SESSION_ID}
- *        cancel-url:  ${FRONTEND_URL:http://localhost:5173}/cart
- *
- * 2. PaymentService.java — donde creas la sesión de Stripe:
- *      String dynamicSuccessUrl = successUrl.replace("CART_ID_PLACEHOLDER", cartId);
- *      .setSuccessUrl(dynamicSuccessUrl)
- *
- * Stripe sustituye {CHECKOUT_SESSION_ID} automáticamente.
- * Con eso la URL de retorno queda:
- *   /payment-success?cart_id=<uuid>&session_id=cs_test_...
- * ─────────────────────────────────────────────────────────────────────────
- */
-
 const MAX_POLLS = 20;   // 20 × 3 s = 60 s de espera máxima
 const POLL_MS   = 3000;
 
@@ -91,7 +68,7 @@ export default function PaymentSuccess() {
   return (
     <div className="page" style={{ maxWidth: 560, margin: "0 auto", paddingTop: "4rem" }}>
       {phase === "polling"    && <PollingView dots={dots} />}
-      {phase === "completed"  && <CompletedView payment={payment} onGoPayments={() => navigate("/payments")} />}
+      {phase === "completed"  && <CompletedView payment={payment} navigate={navigate} />}
       {phase === "timeout"    && <TimeoutView onRetry={() => { pollCount.current = 0; setPhase("polling"); }} onGoPayments={() => navigate("/payments")} />}
       {phase === "failed"     && <FailedView onGoPayments={() => navigate("/payments")} />}
       {phase === "no_cart_id" && <NoCartIdView sessionId={sessionId} onGoPayments={() => navigate("/payments")} />}
@@ -113,7 +90,7 @@ function PollingView({ dots }) {
   );
 }
 
-function CompletedView({ payment, onGoPayments }) {
+function CompletedView({ payment, navigate }) {
   return (
     <div className="card" style={S.card}>
       <IconWrap bg="#E8F5E9"><CheckIcon /></IconWrap>
@@ -126,8 +103,23 @@ function CompletedView({ payment, onGoPayments }) {
           <Row label="Estado"     value="Completado ✓" ok />
         </div>
       )}
-      <button className="btn btn-primary btn-full mt-2" onClick={onGoPayments}>Ver mis boletas →</button>
-      <Link to="/" className="btn btn-ghost btn-full mt-1" style={{ display: "block", textAlign: "center" }}>Volver al inicio</Link>
+      
+      {/* NUEVO BOTÓN: Redirige al detalle del ticket */}
+      <button 
+        className="btn btn-primary btn-full mt-2" 
+        onClick={() => navigate(`/ticket-detail/${payment?.id ?? payment?.paymentId}`)}
+      >
+        Ver detalle de boleta
+      </button>
+
+      {/* BOTÓN EXISTENTE: Se pasó a una variante secundaria/ghost para que destaque el de arriba */}
+      <button className="btn btn-ghost btn-full mt-2" style={{ border: "1px solid var(--color-border-tertiary)" }} onClick={() => navigate("/payments")}>
+        Ver mis pagos →
+      </button>
+      
+      <Link to="/" className="btn btn-ghost btn-full mt-1" style={{ display: "block", textAlign: "center" }}>
+        Volver al inicio
+      </Link>
     </div>
   );
 }
@@ -169,7 +161,7 @@ function NoCartIdView({ sessionId, onGoPayments }) {
       )}
       {/* Aviso solo en desarrollo */}
       {typeof import.meta !== "undefined" && import.meta.env?.DEV && (
-        <div className="alert alert-error mt-2" style={{ textAlign: "left", fontSize: "0.8rem" }}>
+        <div className="alert alert-error mt-2" style={{ textAlign: "left", fontSize: "0.8rem", padding: "1rem", background: "#fef2f2", color: "#991b1b", borderRadius: "8px" }}>
           <strong>Dev:</strong> La URL no incluye <code>cart_id</code>.
           Agrega <code>?cart_id=CART_ID_PLACEHOLDER</code> al <code>stripe.success-url</code> en{" "}
           <code>application.yml</code> y llama a{" "}
@@ -232,12 +224,12 @@ const XIcon = () => (
 
 /* ── Estilos ─────────────────────────────────────────────────── */
 const S = {
-  card: { padding: "2.5rem 2rem", textAlign: "center" },
-  h:    { fontSize: "1.4rem", fontWeight: 500, margin: "1rem 0 0.5rem" },
-  sub:  { color: "var(--color-text-secondary)", lineHeight: 1.6, marginBottom: "1.5rem" },
-  hint: { fontSize: "0.8rem", color: "var(--color-text-secondary)", marginTop: "1rem" },
-  box:  { background: "var(--color-background-secondary)", borderRadius: "var(--border-radius-md)",
-          padding: "0.75rem 1rem", marginBottom: "1rem", textAlign: "left" },
+  card:  { padding: "2.5rem 2rem", textAlign: "center", background: "#fff", borderRadius: "12px", boxShadow: "0 4px 12px rgba(0,0,0,0.05)" },
+  h:     { fontSize: "1.4rem", fontWeight: 500, margin: "1rem 0 0.5rem" },
+  sub:   { color: "var(--color-text-secondary)", lineHeight: 1.6, marginBottom: "1.5rem" },
+  hint:  { fontSize: "0.8rem", color: "var(--color-text-secondary)", marginTop: "1rem" },
+  box:   { background: "var(--color-background-secondary)", borderRadius: "8px",
+           padding: "0.75rem 1rem", marginBottom: "1rem", textAlign: "left" },
   track: { width: "100%", height: 4, background: "var(--color-border-tertiary)", borderRadius: 2, overflow: "hidden" },
   bar:   { height: "100%", width: "40%", background: "#1D9E75", animation: "psprogress 2s ease-in-out infinite alternate" },
 };

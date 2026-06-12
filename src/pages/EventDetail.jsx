@@ -50,6 +50,11 @@ export default function EventDetail() {
     load();
   }, [id]);
 
+  // Cada vez que el usuario cambie de tipo de boleta, reiniciamos la cantidad a 1
+  useEffect(() => {
+    setQty(1);
+  }, [selected]);
+
   const handleAddToCart = async () => {
     if (!user) {
       navigate("/login", { state: { from: { pathname: `/events/${id}` } } });
@@ -86,6 +91,8 @@ export default function EventDetail() {
 
   const ticketTypes  = event.ticketTypes ?? [];
   const selectedType = ticketTypes.find((t) => t.id === selected);
+  
+  const maxAvailableForSelection = selectedType ? Math.min(10, selectedType.remainingStock ?? selectedType.availableQuantity ?? 0) : 10;
 
   return (
     <div className="page event-detail-page">
@@ -157,7 +164,10 @@ export default function EventDetail() {
               {/* Tipos de boleta */}
               <div className="ticket-types-list">
                 {ticketTypes.map((tt) => {
-                  const sold = tt.remainingCapacity === 0;
+                  // Extraemos el stock usando los nombres de las propiedades reales de tu API
+                  const stock = tt.remainingStock ?? tt.availableQuantity ?? 0;
+                  const sold = stock <= 0;
+
                   return (
                     <button
                       key={tt.id}
@@ -168,9 +178,7 @@ export default function EventDetail() {
                       <span className="ticket-type-name">{tt.name}</span>
                       <span className="ticket-type-price">{formatPrice(tt.price)}</span>
                       <span className="ticket-type-avail">
-                        {sold
-                          ? "Agotado"
-                          : `${tt.remainingCapacity ?? tt.quantity} disponibles`}
+                        {sold ? "Agotado" : `${stock} disponibles`}
                       </span>
                     </button>
                   );
@@ -189,8 +197,8 @@ export default function EventDetail() {
                   <span className="qty-value">{qty}</span>
                   <button
                     className="qty-btn"
-                    onClick={() => setQty((q) => Math.min(10, q + 1))}
-                    disabled={qty >= 10}
+                    onClick={() => setQty((q) => Math.min(maxAvailableForSelection, q + 1))}
+                    disabled={qty >= maxAvailableForSelection}
                   >+</button>
                 </div>
               </div>
@@ -216,7 +224,7 @@ export default function EventDetail() {
               <button
                 className="btn btn-primary btn-full btn-lg"
                 onClick={handleAddToCart}
-                disabled={adding || !selected || event.status !== "PUBLISHED"}
+                disabled={adding || !selected || event.status !== "PUBLISHED" || maxAvailableForSelection === 0}
               >
                 {adding ? "Agregando…" : "Agregar al carrito"}
               </button>
