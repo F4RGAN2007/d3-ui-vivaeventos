@@ -13,7 +13,7 @@ const authService = {
    * POST /auth/register
    * @param {{ username, email, firstName, lastName, password, role }} data
    */
-  register: (data) => api.post("/auth/register", data),
+  register: (data) => api.post("api/auth/register", data),
 
   /** Remove token from localStorage */
   logout: () => localStorage.removeItem("token"),
