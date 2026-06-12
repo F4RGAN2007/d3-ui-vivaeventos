@@ -17,6 +17,8 @@ const ticketService = {
    * Body: { orderId, ticketTypeId, ticketTypeName, eventId, buyerId }
    */
   generate: (data) => api.post("/api/tickets/generate", data),
+
+  getMyTickets: () => api.get("/tickets/my"),
 };
 
 export default ticketService;
