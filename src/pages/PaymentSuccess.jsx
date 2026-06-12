@@ -35,7 +35,7 @@ export default function PaymentSuccess() {
         const pay = res.data;
         if (!pay) return;
 
-        if (pay.status === "COMPLETED") {
+        if (pay.status === "COMPLETED" || pay.status === "APPROVED") {
           clearInterval(timerRef.current);
           setPayment(pay);
           setPhase("completed");
