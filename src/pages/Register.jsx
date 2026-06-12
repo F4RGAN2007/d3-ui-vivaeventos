@@ -10,6 +10,8 @@ export default function Register() {
   const [form, setForm] = useState({
     username: "",
     email: "",
+    firstName: "",
+    lastName: "",
     password: "",
     confirmPassword: "",
     role: "CLIENT",
@@ -22,7 +24,7 @@ export default function Register() {
     setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
 
   const validate = () => {
-    if (!form.username || !form.email || !form.password || !form.confirmPassword)
+    if (!form.username || !form.email || !form.firstName || !form.lastName || !form.password || !form.confirmPassword)
       return "Completa todos los campos.";
     if (!/\S+@\S+\.\S+/.test(form.email))
       return "Ingresa un email válido.";
@@ -92,6 +94,36 @@ export default function Register() {
               onChange={handleChange}
               autoComplete="email"
             />
+          </div>
+
+          <div style={{ display: "flex", gap: "12px" }}>
+            <div className="form-group" style={{ flex: 1 }}>
+              <label className="form-label" htmlFor="firstName">Nombre</label>
+              <input
+                id="firstName"
+                name="firstName"
+                type="text"
+                className="form-input"
+                placeholder="Tu nombre"
+                value={form.firstName}
+                onChange={handleChange}
+                autoComplete="given-name"
+              />
+            </div>
+
+            <div className="form-group" style={{ flex: 1 }}>
+              <label className="form-label" htmlFor="lastName">Apellido</label>
+              <input
+                id="lastName"
+                name="lastName"
+                type="text"
+                className="form-input"
+                placeholder="Tu apellido"
+                value={form.lastName}
+                onChange={handleChange}
+                autoComplete="family-name"
+              />
+            </div>
           </div>
 
           <div className="form-group">
