@@ -1,4 +1,5 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import paymentService from "../services/paymentService.js";
 import ticketService  from "../services/ticketService.js";
 import { useAuth } from "../context/AuthContext.jsx";
@@ -26,33 +27,88 @@ const STATUS_LABEL = {
 };
 
 export default function Payments() {
-  const { user } = useAuth();
+  const { user }                            = useAuth();
+  const navigate                            = useNavigate();
+  const [searchParams, setSearchParams]     = useSearchParams();
 
-  const [payments,      setPayments]      = useState([]);
-  const [loading,       setLoading]       = useState(true);
-  const [error,         setError]         = useState("");
-  const [selected,      setSelected]      = useState(null);
+  const [payments,      setPayments]        = useState([]);
+  const [loading,       setLoading]         = useState(true);
+  const [error,         setError]           = useState("");
+  const [selected,      setSelected]        = useState(null);
+  // Banner shown when Stripe redirects back with success
+  const [stripeSuccess, setStripeSuccess]   = useState(false);
 
-  const [genForm,       setGenForm]       = useState({ orderId: "", ticketTypeId: "", ticketTypeName: "", eventId: "", buyerId: "" });
-  const [genMsg,        setGenMsg]        = useState({ type: "", text: "" });
-  const [genLoading,    setGenLoading]    = useState(false);
-  const [showGenModal,  setShowGenModal]  = useState(false);
+  const [genForm,       setGenForm]         = useState({ orderId: "", ticketTypeId: "", ticketTypeName: "", eventId: "", buyerId: "" });
+  const [genMsg,        setGenMsg]          = useState({ type: "", text: "" });
+  const [genLoading,    setGenLoading]      = useState(false);
+  const [showGenModal,  setShowGenModal]    = useState(false);
+
+  /* ── Carga / refresco de pagos ─────────────────────────── */
+  const loadPayments = useCallback(async () => {
+    setLoading(true);
+    setError("");
+    try {
+      const res = await paymentService.getMy();
+      const list = res.data?.content ?? res.data ?? [];
+      setPayments(list);
+
+      // Si venimos de Stripe y el pago ya está COMPLETED, lo seleccionamos
+      const cartId = searchParams.get("cart_id");
+      if (cartId) {
+        const match = list.find(
+          (p) => (p.cartId ?? p.orderId) === cartId && p.status === "COMPLETED"
+        );
+        if (match) setSelected(match);
+      }
+    } catch (err) {
+      setError(err.userMessage ?? "No se pudieron cargar los pagos.");
+    } finally {
+      setLoading(false);
+    }
+  }, [searchParams]);
 
   useEffect(() => {
-    const load = async () => {
-      setLoading(true);
-      try {
-        const res = await paymentService.getMy();
-        setPayments(res.data?.content ?? res.data ?? []);
-      } catch (err) {
-        setError(err.userMessage ?? "No se pudieron cargar los pagos.");
-      } finally {
-        setLoading(false);
-      }
-    };
-    load();
-  }, []);
+    // Detectar retorno desde Stripe (success_url suele incluir ?redirect_status=succeeded
+    // o un parámetro propio; ajusta según tu configuración en payment-service)
+    const redirectStatus = searchParams.get("redirect_status");
+    const sessionId      = searchParams.get("session_id");
 
+    if (redirectStatus === "succeeded" || sessionId) {
+      setStripeSuccess(true);
+      // Limpiar params de la URL para que no queden en historial
+      setSearchParams({}, { replace: true });
+    }
+
+    loadPayments();
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  /* ── Polling: si hay pagos PENDING, refresca cada 5 s ─── */
+  useEffect(() => {
+    const hasPending = payments.some((p) => p.status === "PENDING");
+    if (!hasPending) return;
+
+    const id = setInterval(async () => {
+      try {
+        const res  = await paymentService.getMy();
+        const list = res.data?.content ?? res.data ?? [];
+        setPayments(list);
+
+        // Actualizar el panel de detalle si el pago seleccionado cambió
+        if (selected) {
+          const updated = list.find(
+            (p) => (p.id ?? p.paymentId) === (selected.id ?? selected.paymentId)
+          );
+          if (updated) setSelected(updated);
+        }
+      } catch {
+        // silencioso; el usuario puede refrescar manualmente
+      }
+    }, 5000);
+
+    return () => clearInterval(id);
+  }, [payments, selected]);
+
+  /* ── Generar ticket (ADMIN) ────────────────────────────── */
   const handleGenerate = async () => {
     setGenLoading(true);
     setGenMsg({ type: "", text: "" });
@@ -82,12 +138,25 @@ export default function Payments() {
           <h1 className="page-title">Mis Pagos</h1>
           <p className="page-subtitle">Historial de transacciones</p>
         </div>
-        {user?.role === "ADMIN" && (
-          <button className="btn btn-primary" onClick={() => setShowGenModal(true)}>
-            ＋ Generar Ticket
+        <div style={{ display: "flex", gap: "0.5rem" }}>
+          <button className="btn btn-ghost" onClick={loadPayments} title="Refrescar">
+            ↻ Refrescar
           </button>
-        )}
+          {user?.role === "ADMIN" && (
+            <button className="btn btn-primary" onClick={() => setShowGenModal(true)}>
+              ＋ Generar Ticket
+            </button>
+          )}
+        </div>
       </div>
+
+      {/* ── Banner de pago exitoso (retorno desde Stripe) ─── */}
+      {stripeSuccess && (
+        <div className="alert alert-success mb-2" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <span>✓ Pago procesado. Tus boletas se están generando — aparecerán en segundos.</span>
+          <button className="btn btn-ghost btn-sm" onClick={() => setStripeSuccess(false)}>✕</button>
+        </div>
+      )}
 
       {error && <div className="alert alert-error mb-2">{error}</div>}
 
@@ -105,7 +174,7 @@ export default function Payments() {
             {payments.map((p) => {
               const s   = STATUS_LABEL[p.status] ?? { label: p.status, cls: "badge-inactive" };
               const pid = p.id ?? p.paymentId;
-              const isSelected = selected?.id === p.id;
+              const isSelected = (selected?.id ?? selected?.paymentId) === pid;
 
               return (
                 <div
@@ -154,6 +223,7 @@ export default function Payments() {
             <PaymentDetail
               payment={selected}
               onClose={() => setSelected(null)}
+              onNavigateTicket={(id) => navigate(`/tickets/${id}`)}
             />
           )}
 
@@ -216,19 +286,53 @@ export default function Payments() {
 }
 
 /* ── PaymentDetail ───────────────────────────────────────────── */
-function PaymentDetail({ payment, onClose }) {
-  const [audit,   setAudit]   = useState(null);
-  const [loading, setLoading] = useState(false);
+function PaymentDetail({ payment, onClose, onNavigateTicket }) {
+  const [audit,          setAudit]          = useState(null);
+  const [auditLoading,   setAuditLoading]   = useState(false);
+  const [tickets,        setTickets]        = useState([]);
+  const [ticketsLoading, setTicketsLoading] = useState(false);
+  const [ticketsError,   setTicketsError]   = useState("");
+
+  /* Cargar boletas cuando el pago está COMPLETED ─────────── */
+  useEffect(() => {
+    if (payment.status !== "COMPLETED") return;
+
+    const cartId = payment.cartId ?? payment.orderId;
+    if (!cartId) return;
+
+    const fetchTickets = async () => {
+      setTicketsLoading(true);
+      setTicketsError("");
+      try {
+        // Intenta primero por cartId; ajusta el método según tu ticketService
+        const res = await ticketService.getByCart(cartId);
+        setTickets(res.data?.content ?? res.data ?? []);
+      } catch {
+        // Fallback: buscar entre todos los tickets del usuario
+        try {
+          const fallback = await ticketService.getMy();
+          const all      = fallback.data?.content ?? fallback.data ?? [];
+          setTickets(all.filter((t) => (t.cartId ?? t.orderId) === cartId));
+        } catch {
+          setTicketsError("No se pudieron cargar las boletas.");
+        }
+      } finally {
+        setTicketsLoading(false);
+      }
+    };
+
+    fetchTickets();
+  }, [payment]);
 
   const loadAudit = async () => {
-    setLoading(true);
+    setAuditLoading(true);
     try {
       const res = await paymentService.getAudit(payment.id ?? payment.paymentId);
       setAudit(res.data);
     } catch {
       setAudit(null);
     } finally {
-      setLoading(false);
+      setAuditLoading(false);
     }
   };
 
@@ -271,12 +375,62 @@ function PaymentDetail({ payment, onClose }) {
           </a>
         )}
 
+        {/* ── Boletas del pago ─────────────────────────────── */}
+        {payment.status === "COMPLETED" && (
+          <div className="mt-2">
+            <p className="payment-detail-key" style={{ marginBottom: "0.5rem" }}>
+              Boletas generadas
+            </p>
+
+            {ticketsLoading && (
+              <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", fontSize: "0.85rem", color: "var(--color-text-secondary)" }}>
+                <div className="spinner" style={{ width: 16, height: 16 }} /> Buscando boletas…
+              </div>
+            )}
+
+            {ticketsError && (
+              <div className="alert alert-error" style={{ fontSize: "0.85rem" }}>{ticketsError}</div>
+            )}
+
+            {!ticketsLoading && !ticketsError && tickets.length === 0 && (
+              <p style={{ fontSize: "0.85rem", color: "var(--color-text-secondary)" }}>
+                Aún no hay boletas — puede tardar unos segundos en procesarse.
+              </p>
+            )}
+
+            {tickets.map((t) => {
+              const tid = t.id ?? t.ticketId;
+              return (
+                <div
+                  key={tid}
+                  className="card"
+                  style={{ marginBottom: "0.5rem", padding: "0.75rem", cursor: "pointer" }}
+                  onClick={() => onNavigateTicket(tid)}
+                >
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <div>
+                      <p style={{ fontWeight: 500, fontSize: "0.9rem" }}>
+                        {t.ticketTypeName ?? t.type ?? "Boleta"}
+                      </p>
+                      <p style={{ fontSize: "0.8rem", color: "var(--color-text-secondary)" }}>
+                        ID: {tid?.toString().slice(0, 12)}…
+                      </p>
+                    </div>
+                    <span className="btn btn-ghost btn-sm">Ver QR →</span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {/* ── Auditoría ─────────────────────────────────────── */}
         <button
           className="btn btn-ghost btn-full mt-2"
           onClick={loadAudit}
-          disabled={loading}
+          disabled={auditLoading}
         >
-          {loading ? "Cargando auditoría…" : "Ver auditoría"}
+          {auditLoading ? "Cargando auditoría…" : "Ver auditoría"}
         </button>
 
         {audit && (
