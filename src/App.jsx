@@ -48,7 +48,7 @@ export default function App() {
 
             {/* ── Ticket: CLIENT y ADMIN ── */}
             <Route element={<ProtectedRoute roles={["CLIENT", "ADMIN"]} />}>
-              <Route path="/tickets/:ticketId" element={<TicketDetail />} />
+              <Route path="/my-tickets" element={<TicketDetail />} />
             </Route>
 
             {/* ── Organizador ── */}
