@@ -36,6 +36,9 @@ export default function Navbar() {
               <Link to="/payments" style={isActive("/payments") ? styles.linkActive : styles.link}>
                 Pagos
               </Link>
+              <Link to="/my-tickets" style={isActive("/my-tickets") ? styles.linkActive : styles.link}>
+                🎫 Mis Boletas
+              </Link>
             </>
           )}
 
